@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Connect 5</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="container">
+    <h1>بازی Connect 5</h1>
+
+    <div class="profile-setup">
+      <input type="text" id="username" placeholder="نام کاربری خود را وارد کنید">
+      <input type="file" id="profilePic" accept="image/*">
+      <img id="previewPic" src="" alt="پروفایل" title="برای انتخاب مجدد کلیک کنید" />
+      <button id="startBtn">شروع بازی</button>
+    </div>
+
+    <div class="game-area" style="display: none;">
+      <video id="camera" autoplay playsinline></video>
+      <canvas id="snapshot" width="320" height="240" style="display: none;"></canvas>
+      <div id="board">صفحه بازی اینجا میاد</div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
