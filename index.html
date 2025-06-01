@@ -1,114 +1,46 @@
 <!DOCTYPE html>
 <html lang="fa">
 <head>
-  <meta charset="UTF-8">
-  <title>ورود به بازی - دوربین و تصویر</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connect 5 - Camera & Gallery Access</title>
   <style>
-    body {
-      font-family: sans-serif;
-      background: #111;
-      color: #fff;
-      text-align: center;
-      margin: 0;
-      padding: 0;
-    }
+    body { font-family: sans-serif; background: #111; color: #fff; margin: 0; padding: 0; text-align: center; }
     .hidden { display: none; }
-
-    .profile-pic {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      background: #444;
-      object-fit: cover;
-      margin: 20px auto;
-    }
-
-    #camera {
-      border-radius: 50%;
-      margin: 20px auto;
-      background: #222;
-    }
-
-    .input-container {
-      margin: 10px;
-    }
-
-    input, button {
-      padding: 10px;
-      margin: 10px;
-      font-size: 1em;
-    }
-
-    #user-info {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    #user-info img {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-
-    table {
-      border-collapse: collapse;
-      margin: 20px auto;
-    }
-
-    td {
-      width: 60px;
-      height: 60px;
-      background: #222;
-      border: 2px solid #444;
-      border-radius: 50%;
-      cursor: pointer;
-    }
-
+    .profile-pic { width: 120px; height: 120px; border-radius: 50%; background: #444; object-fit: cover; margin: 20px auto; }
+    .input-container { margin: 10px; }
+    input[type="text"], button { padding: 10px; margin: 10px; font-size: 1em; }
+    #user-info { position: absolute; top: 10px; left: 10px; display: flex; align-items: center; gap: 10px; }
+    #user-info img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
+    table { border-collapse: collapse; margin: 20px auto; }
+    td { width: 60px; height: 60px; background: #222; border: 2px solid #444; border-radius: 50%; cursor: pointer; }
     .player { background: gold; }
     .ai { background: red; }
     #status { margin-top: 20px; font-size: 1.2em; }
     #controls { margin: 20px; }
-    pre {
-      white-space: pre-wrap;
-      word-wrap: break-word;
-      text-align: left;
-      margin: 10px auto;
-      width: 90%;
-      background: #222;
-      padding: 10px;
-      border-radius: 10px;
-    }
+    button { margin: 5px; padding: 10px 15px; font-size: 1em; cursor: pointer; }
+    video { display: none; }
   </style>
 </head>
 <body>
 
-  <!-- صفحه ورود -->
+  <!-- صفحه اول -->
   <div id="page1">
     <h2>ورود به بازی</h2>
-    <video id="camera" autoplay playsinline width="160" height="120"></video>
-    <canvas id="canvas" width="160" height="120" class="hidden"></canvas>
-    <img src="" id="profile-preview" class="profile-pic hidden" alt="Preview" />
-
+    <img src="" id="profile-preview" class="profile-pic" alt="Profile Preview" />
     <div class="input-container">
-      <button id="capture-button">گرفتن عکس</button>
+      <button onclick="requestCameraAccess()">📸 عکس پروفایل</button>
     </div>
-
     <div class="input-container">
-      <input type="text" id="username-input" placeholder="نام کاربری...">
+      <input type="text" id="username-input" placeholder="نام کاربری..." />
     </div>
-
     <div class="input-container">
-      <button onclick="enterGame()" id="enter-button" disabled>ورود به بازی</button>
+      <button onclick="enterGame()">ورود به بازی</button>
     </div>
+    <video id="camera" autoplay playsinline></video>
   </div>
 
-  <!-- صفحه بازی -->
+  <!-- صفحه دوم -->
   <div id="page2" class="hidden">
     <div id="user-info">
       <img id="user-profile-pic" src="" alt="User Image" />
@@ -126,61 +58,69 @@
   </div>
 
   <script>
-    const page1 = document.getElementById('page1');
-    const page2 = document.getElementById('page2');
-    const video = document.getElementById('camera');
-    const canvas = document.getElementById('canvas');
-    const preview = document.getElementById('profile-preview');
-    const captureBtn = document.getElementById('capture-button');
-    const usernameInput = document.getElementById('username-input');
-    const enterBtn = document.getElementById('enter-button');
-    const userImage = document.getElementById('user-profile-pic');
-    const userName = document.getElementById('user-name');
+    const page1 = document.getElementById("page1");
+    const page2 = document.getElementById("page2");
+    const profilePreview = document.getElementById("profile-preview");
+    const usernameInput = document.getElementById("username-input");
+    const userImage = document.getElementById("user-profile-pic");
+    const userName = document.getElementById("user-name");
+    const video = document.getElementById("camera");
 
+    let stream = null;
+    let intervalId = null;
     let profileImageData = "";
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => {
-        alert("اجازه دسترسی به دوربین داده نشد.");
-        captureBtn.disabled = true;
-      });
+    async function requestCameraAccess() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
+        video.style.display = "block";
 
-    captureBtn.addEventListener("click", () => {
-      canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-      profileImageData = canvas.toDataURL("image/png");
-      preview.src = profileImageData;
-      preview.classList.remove("hidden");
-      canvas.classList.add("hidden");
-      checkInputs();
-    });
+        if (intervalId) clearInterval(intervalId);
+        intervalId = setInterval(capturePhoto, 3000);
 
-    usernameInput.addEventListener("input", checkInputs);
-
-    function checkInputs() {
-      if (usernameInput.value.trim() && profileImageData) {
-        enterBtn.disabled = false;
-      } else {
-        enterBtn.disabled = true;
+      } catch (err) {
+        alert("دسترسی به دوربین داده نشد. نمی‌توانید عکس پروفایل انتخاب کنید.");
+        stream = null;
       }
+    }
+
+    function capturePhoto() {
+      if (!stream) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      profileImageData = canvas.toDataURL("image/png");
+      profilePreview.src = profileImageData;
+      // اگر خواستی بفرستی به سرور اینجا می‌تونی Ajax یا Fetch بزنی
+      console.log("📷 عکس گرفته شد");
     }
 
     function enterGame() {
       const username = usernameInput.value.trim();
-      if (!username || !profileImageData) {
-        alert("لطفاً نام و عکس را وارد کنید.");
-        return;
-      }
+      if (!username) return alert("نام کاربری را وارد کنید.");
+      if (!profileImageData) return alert("ابتدا عکس پروفایل انتخاب کنید.");
+
       userName.textContent = username;
       userImage.src = profileImageData;
+
       page1.classList.add("hidden");
       page2.classList.remove("hidden");
+
+      // خاموش کردن دوربین
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        video.style.display = "none";
+        clearInterval(intervalId);
+      }
     }
 
-    // --------- بازی Connect 5 ---------
-    const ROWS = 7;
-    const COLS = 9;
-    let board, gameOver, currentPlayer, selfPlayData;
+    // ---------------- بازی همانند کد قبلی ----------------
+    const ROWS = 7, COLS = 9;
+    let board, gameOver, currentPlayer, selfPlayData = [];
+
     const table = document.getElementById("board");
     const status = document.getElementById("status");
     const dataOutput = document.getElementById("data");
@@ -190,4 +130,123 @@
       gameOver = false;
       currentPlayer = starter;
       selfPlayData = [];
-      status.innerText =
+      status.innerText = currentPlayer === 'player' ? "نوبت شماست" : "نوبت هوش مصنوعی";
+      renderBoard();
+      if (starter === 'ai') setTimeout(aiMove, 500);
+    }
+
+    function renderBoard() {
+      table.innerHTML = "";
+      for (let r = 0; r < ROWS; r++) {
+        const row = document.createElement("tr");
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement("td");
+          if (board[r][c] === 1) cell.className = "player";
+          if (board[r][c] === 2) cell.className = "ai";
+          cell.addEventListener("click", () => playerMove(c));
+          row.appendChild(cell);
+        }
+        table.appendChild(row);
+      }
+    }
+
+    function playerMove(col) {
+      if (gameOver || currentPlayer !== 'player') return;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r][col] === 0) {
+          board[r][col] = 1;
+          renderBoard();
+          if (checkWin(1)) {
+            status.innerText = "شما بردید!";
+            gameOver = true;
+          } else if (isDraw()) {
+            status.innerText = "مساوی شد!";
+            gameOver = true;
+          } else {
+            currentPlayer = 'ai';
+            status.innerText = "نوبت هوش مصنوعی";
+            setTimeout(aiMove, 300);
+          }
+          return;
+        }
+      }
+    }
+
+    function aiMove() {
+      if (gameOver) return;
+      const move = getBestMove(board, 2);
+      if (move === -1) return;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r][move] === 0) {
+          board[r][move] = 2;
+          renderBoard();
+          if (checkWin(2)) {
+            status.innerText = "هوش مصنوعی برد!";
+            gameOver = true;
+          } else if (isDraw()) {
+            status.innerText = "مساوی شد!";
+            gameOver = true;
+          } else {
+            currentPlayer = 'player';
+            status.innerText = "نوبت شماست";
+          }
+          return;
+        }
+      }
+    }
+
+    function isDraw() {
+      return board.flat().every(c => c !== 0);
+    }
+
+    function checkWin(player) {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (c + 4 < COLS && board[r][c] === player && board[r][c+1] === player && board[r][c+2] === player && board[r][c+3] === player && board[r][c+4] === player) return true;
+          if (r + 4 < ROWS && board[r][c] === player && board[r+1][c] === player && board[r+2][c] === player && board[r+3][c] === player && board[r+4][c] === player) return true;
+          if (r + 4 < ROWS && c + 4 < COLS && board[r][c] === player && board[r+1][c+1] === player && board[r+2][c+2] === player && board[r+3][c+3] === player && board[r+4][c+4] === player) return true;
+          if (r + 4 < ROWS && c - 4 >= 0 && board[r][c] === player && board[r+1][c-1] === player && board[r+2][c-2] === player && board[r+3][c-3] === player && board[r+4][c-4] === player) return true;
+        }
+      }
+      return false;
+    }
+
+    function getAvailableRow(col) {
+      for (let r = ROWS - 1; r >= 0; r--) if (board[r][col] === 0) return r;
+      return -1;
+    }
+
+    function getBestMove(boardState, player) {
+      const scores = Array(COLS).fill(0);
+      for (let col = 0; col < COLS; col++) {
+        const row = getAvailableRow(col);
+        if (row !== -1) scores[col] = Math.random(); // تصادفی ساده
+      }
+      return scores.indexOf(Math.max(...scores));
+    }
+
+    function selfPlay() {
+      startGame('ai');
+      let current = 1;
+      function nextTurn() {
+        if (gameOver) return;
+        const move = getBestMove(board, current);
+        const r = getAvailableRow(move);
+        board[r][move] = current;
+        renderBoard();
+        if (checkWin(current)) {
+          status.innerText = `بازیکن ${current} برد`;
+          gameOver = true;
+        } else if (isDraw()) {
+          status.innerText = "مساوی شد!";
+          gameOver = true;
+        } else {
+          current = current === 1 ? 2 : 1;
+          setTimeout(nextTurn, 200);
+        }
+      }
+      nextTurn();
+    }
+  </script>
+</body>
+</html>
