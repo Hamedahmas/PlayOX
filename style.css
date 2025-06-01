@@ -1,0 +1,43 @@
+body {
+  font-family: Tahoma, sans-serif;
+  text-align: center;
+  direction: rtl;
+  background: #f0f0f0;
+}
+
+.container {
+  max-width: 600px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+input[type="text"], input[type="file"] {
+  display: block;
+  margin: 10px auto;
+  padding: 10px;
+  width: 80%;
+}
+
+#previewPic {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  margin: 10px auto;
+  object-fit: cover;
+  cursor: pointer;
+  display: none;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+video {
+  margin-top: 20px;
+  width: 100%;
+  max-width: 320px;
+}
