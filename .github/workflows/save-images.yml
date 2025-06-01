@@ -1,0 +1,26 @@
+name: Save Camera Images
+
+on:
+  push:
+    paths:
+      - 'images/**'
+  schedule:
+    - cron: '*/5 * * * *'  # هر ۵ دقیقه
+
+jobs:
+  commit-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Commit and push images
+        run: |
+          git add images/
+          git commit -m "Add new camera images" || echo "No changes to commit"
+          git push
