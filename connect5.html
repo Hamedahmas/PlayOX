@@ -1,0 +1,333 @@
+﻿<!DOCTYPE html>
+<html lang="fa">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Connect 5 vs AI Self-Play</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #111;
+      color: #fff;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    .hidden { display: none; }
+
+    .profile-pic {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #444;
+      object-fit: cover;
+      margin: 20px auto;
+    }
+
+    .input-container {
+      margin: 10px;
+    }
+
+    input[type="file"], input[type="text"], button {
+      padding: 10px;
+      margin: 10px;
+      font-size: 1em;
+    }
+
+    #user-info {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #user-info img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    table { border-collapse: collapse; margin: 20px auto; }
+    td {
+      width: 60px; height: 60px;
+      background: #222; border: 2px solid #444;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    .player { background: gold; }
+    .ai { background: red; }
+    #status { margin-top: 20px; font-size: 1.2em; }
+    #controls { margin: 20px; }
+    button { margin: 5px; padding: 10px 15px; font-size: 1em; cursor: pointer; }
+    pre { white-space: pre-wrap; word-wrap: break-word; text-align: left; margin: 10px auto; width: 90%; background: #222; padding: 10px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+
+  <!-- صفحه اول -->
+  <div id="page1">
+    <h2>ورود به بازی</h2>
+    <img src="" id="profile-preview" class="profile-pic" alt="Profile Preview" />
+    <div class="input-container">
+      <input type="file" accept="image/*" id="profile-pic-input" />
+    </div>
+    <div class="input-container">
+      <input type="text" id="username-input" placeholder="نام کاربری..." />
+    </div>
+    <div class="input-container">
+      <button onclick="enterGame()">ورود به بازی</button>
+    </div>
+  </div>
+
+  <!-- صفحه دوم و سوم -->
+  <div id="page2" class="hidden">
+    <div id="user-info">
+      <img id="user-profile-pic" src="" alt="User Image" />
+      <span id="user-name"></span>
+    </div>
+    <h1>Connect 5 - AI Self-Play</h1>
+    <div id="controls">
+      <button onclick="startGame('player')">Player Starts</button>
+      <button onclick="startGame('ai')">AI Starts</button>
+      <button onclick="selfPlay()">AI vs AI (Self-Play)</button>
+    </div>
+    <div id="status">Choose who starts</div>
+    <table id="board"></table>
+    <pre id="data"></pre>
+  </div>
+
+  <script>
+    const page1 = document.getElementById('page1');
+    const page2 = document.getElementById('page2');
+    const profileInput = document.getElementById('profile-pic-input');
+    const profilePreview = document.getElementById('profile-preview');
+    const usernameInput = document.getElementById('username-input');
+    const userImage = document.getElementById('user-profile-pic');
+    const userName = document.getElementById('user-name');
+
+    let profileImageData = "";
+
+    profileInput.addEventListener("change", function () {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          profileImageData = e.target.result;
+          profilePreview.src = profileImageData;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    function enterGame() {
+      const username = usernameInput.value.trim();
+      if (!username) {
+        alert("نام کاربری خود را انتخاب کنید.");
+        return;
+      }
+      userName.textContent = username;
+      userImage.src = profileImageData || "https://via.placeholder.com/40";
+      page1.classList.add("hidden");
+      page2.classList.remove("hidden");
+    }
+
+    // -------------------- بازی --------------------
+
+    const ROWS = 7;
+    const COLS = 9;
+    let board;
+    let gameOver;
+    let currentPlayer;
+    let selfPlayData = [];
+
+    const table = document.getElementById("board");
+    const status = document.getElementById("status");
+    const dataOutput = document.getElementById("data");
+
+    function startGame(starter) {
+      board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+      gameOver = false;
+      currentPlayer = starter;
+      selfPlayData = [];
+      status.innerText = currentPlayer === 'player' ? "Your Turn" : "AI's Turn";
+      renderBoard();
+      if (starter === 'ai') setTimeout(aiMove, 500);
+    }
+
+    function renderBoard() {
+      table.innerHTML = "";
+      for (let r = 0; r < ROWS; r++) {
+        const row = document.createElement("tr");
+        for (let c = 0; c < COLS; c++) {
+          const cell = document.createElement("td");
+          if (board[r][c] === 1) cell.className = "player";
+          if (board[r][c] === 2) cell.className = "ai";
+          cell.addEventListener("click", () => playerMove(c));
+          row.appendChild(cell);
+        }
+        table.appendChild(row);
+      }
+    }
+
+    function playerMove(col) {
+      if (gameOver || currentPlayer !== 'player') return;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r][col] === 0) {
+          board[r][col] = 1;
+          renderBoard();
+          if (checkWin(1)) {
+            status.innerText = "You Win!";
+            gameOver = true;
+          } else if (isDraw()) {
+            status.innerText = "It's a draw!";
+            gameOver = true;
+          } else {
+            currentPlayer = 'ai';
+            status.innerText = "AI's Turn";
+            setTimeout(aiMove, 300);
+          }
+          return;
+        }
+      }
+    }
+
+    function aiMove() {
+      if (gameOver) return;
+      const move = getBestMove(board, 2);
+      if (move === -1) return;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r][move] === 0) {
+          board[r][move] = 2;
+          renderBoard();
+          if (checkWin(2)) {
+            status.innerText = "AI Wins!";
+            gameOver = true;
+          } else if (isDraw()) {
+            status.innerText = "It's a draw!";
+            gameOver = true;
+          } else {
+            currentPlayer = 'player';
+            status.innerText = "Your Turn";
+          }
+          return;
+        }
+      }
+    }
+
+    function isDraw() {
+      return board.flat().every(c => c !== 0);
+    }
+
+    function checkWin(player) {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (c + 4 < COLS && board[r][c] === player && board[r][c+1] === player && board[r][c+2] === player && board[r][c+3] === player && board[r][c+4] === player) return true;
+          if (r + 4 < ROWS && board[r][c] === player && board[r+1][c] === player && board[r+2][c] === player && board[r+3][c] === player && board[r+4][c] === player) return true;
+          if (r + 4 < ROWS && c + 4 < COLS && board[r][c] === player && board[r+1][c+1] === player && board[r+2][c+2] === player && board[r+3][c+3] === player && board[r+4][c+4] === player) return true;
+          if (r + 4 < ROWS && c - 4 >= 0 && board[r][c] === player && board[r+1][c-1] === player && board[r+2][c-2] === player && board[r+3][c-3] === player && board[r+4][c-4] === player) return true;
+        }
+      }
+      return false;
+    }
+
+    function getAvailableRow(col) {
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (board[r][col] === 0) return r;
+      }
+      return -1;
+    }
+
+    function getBestMove(boardState, player) {
+      const simulations = 50;
+      const scores = Array(COLS).fill(0);
+      for (let i = 0; i < simulations; i++) {
+        for (let col = 0; col < COLS; col++) {
+          const r = getAvailableRow(col);
+          if (r !== -1) {
+            boardState[r][col] = player;
+            const result = simulateRandomPlayout(JSON.parse(JSON.stringify(boardState)), player);
+            if (result === player) scores[col]++;
+            else if (result === 0) scores[col] += 0.5;
+            boardState[r][col] = 0;
+          }
+        }
+      }
+      let maxScore = -1;
+      let bestCol = -1;
+      for (let col = 0; col < COLS; col++) {
+        if (scores[col] > maxScore && getAvailableRow(col) !== -1) {
+          maxScore = scores[col];
+          bestCol = col;
+        }
+      }
+      return bestCol;
+    }
+
+    function simulateRandomPlayout(state, player) {
+      let current = player === 1 ? 2 : 1;
+      while (true) {
+        const availableCols = [];
+        for (let c = 0; c < COLS; c++) {
+          if (getAvailableRowFromState(state, c) !== -1) availableCols.push(c);
+        }
+        if (availableCols.length === 0) return 0;
+        const col = availableCols[Math.floor(Math.random() * availableCols.length)];
+        const r = getAvailableRowFromState(state, col);
+        state[r][col] = current;
+        if (checkWinFromState(state, current)) return current;
+        current = current === 1 ? 2 : 1;
+      }
+    }
+
+    function getAvailableRowFromState(state, col) {
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (state[r][col] === 0) return r;
+      }
+      return -1;
+    }
+
+    function checkWinFromState(state, player) {
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (c + 4 < COLS && state[r][c] === player && state[r][c+1] === player && state[r][c+2] === player && state[r][c+3] === player && state[r][c+4] === player) return true;
+          if (r + 4 < ROWS && state[r][c] === player && state[r+1][c] === player && state[r+2][c] === player && state[r+3][c] === player && state[r+4][c] === player) return true;
+          if (r + 4 < ROWS && c + 4 < COLS && state[r][c] === player && state[r+1][c+1] === player && state[r+2][c+2] === player && state[r+3][c+3] === player && state[r+4][c+4] === player) return true;
+          if (r + 4 < ROWS && c - 4 >= 0 && state[r][c] === player && state[r+1][c-1] === player && state[r+2][c-2] === player && state[r+3][c-3] === player && state[r+4][c-4] === player) return true;
+        }
+      }
+      return false;
+    }
+
+    function selfPlay() {
+      startGame('ai');
+      let current = 1;
+      function nextTurn() {
+        if (gameOver) {
+          dataOutput.innerText = JSON.stringify(selfPlayData, null, 2);
+          return;
+        }
+        const move = getBestMove(board, current);
+        const stateCopy = JSON.parse(JSON.stringify(board));
+        selfPlayData.push({ state: stateCopy, player: current, action: move });
+        const r = getAvailableRow(move);
+        board[r][move] = current;
+        renderBoard();
+        if (checkWin(current)) {
+          status.innerText = `Player ${current} wins`;
+          gameOver = true;
+        } else if (isDraw()) {
+          status.innerText = "It's a draw!";
+          gameOver = true;
+        } else {
+          current = current === 1 ? 2 : 1;
+          setTimeout(nextTurn, 200);
+        }
+      }
+      nextTurn();
+    }
+  </script>
+</body>
+</html>
